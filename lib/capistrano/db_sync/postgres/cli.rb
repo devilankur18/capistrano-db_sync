@@ -7,7 +7,11 @@ class Capistrano::DBSync::Postgres::CLI
     args = to_string_args(options)
     # mount_dir = File.dirname to_file
     # "docker run -e #{with_pw} -v #{mount_dir}:#{mount_dir} postgres:alpine pg_dump #{credentials} #{format_args} -f #{to_file} #{args} #{db}".strip
-    "docker run -e #{with_pw} -v /tmp:/tmp postgres:alpine pg_dump #{credentials} #{format_args} -f #{to_file} #{args} #{db}".strip
+    if config['host'] == 'localhost'
+      "#{with_pw} pg_dump #{credentials} #{format_args} -f #{to_file} #{args} #{db}".strip
+    else
+      "docker run -e #{with_pw} -v /tmp:/tmp postgres:alpine pg_dump #{credentials} #{format_args} -f #{to_file} #{args} #{db}".strip
+    end
   end
 
   def restore(from_file, db, options = [])
@@ -29,8 +33,12 @@ class Capistrano::DBSync::Postgres::CLI
 
   def psql(command, db = "postgres")
     normalized_command = command.gsub('"', '\"').gsub(/\s\s+|\n/, " ")
-    # %Q|#{with_pw} psql #{credentials} -d #{db} -c "#{normalized_command}"|.strip
-    %Q|docker run -e #{with_pw} -v /tmp:/tmp postgres:alpine psql #{credentials} -d #{db} -c "#{normalized_command}"|.strip
+    if config['host'] == 'localhost'
+      %Q|#{with_pw} psql #{credentials} -d #{db} -c "#{normalized_command}"|.strip
+    else
+      %Q|docker run -e #{with_pw} -v /tmp:/tmp postgres:alpine psql #{credentials} -d #{db} -c "#{normalized_command}"|.strip
+    end
+
   end
 
   def kill_processes_for_db(db)
